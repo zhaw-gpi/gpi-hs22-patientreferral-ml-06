@@ -110,9 +110,9 @@
       <bpmn:lane id="AutomatischLane" name="Automatisch">
         <bpmn:flowNodeRef>PrufungErfolgreichGateway</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>ZuweisungFormellAbgelehntEndEvent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ZustandigeTriageArztinErmittelnTask1</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>PatientinFallInKISErfassenTask</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>TerminrelevanteInformationenAusKISLesenTask</bpmn:flowNodeRef>
-        <bpmn:flowNodeRef>ZustandigeTriageArztinErmittelnTask1</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="ArztinLane" name="Ärzt:in">
         <bpmn:flowNodeRef>FallTriagierenTask</bpmn:flowNodeRef>
@@ -206,40 +206,6 @@ execution.setProcessBusinessKey("C_" + dateTime + "_" + initiator);</camunda:scr
     <bpmn:endEvent id="PatientinZugewiesenEndEvent1" name="Patient:in zugewiesen">
       <bpmn:incoming>Flow_11cxejl</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:task id="PatientinFallInKISErfassenTask" name="Patient:in &#38; Fall in KIS erfassen">
-      <bpmn:documentation>Anforderungen
-===========
-Die bisher erfassten Informationen zu Patient und Fall sollen ins KIS übertragen werden. Konkret sind folgende Schritte erforderlich:
-- Prüfen, ob die Patient:in bereits im KIS erfasst ist anhand Versichertennummer.
-  - Falls nicht vorhanden: neu anlegen mit den Attributen Versichertennummer, Versicherungstyp, Vorname, Nachname, Geburtsdatum und PLZ
-  - Falls vorhanden: Sofern erforderlich, Attribute aktualisieren (z.B. PLZ)
-- Einen neuen Fall anlegen im KIS mit den Attributen  Zuweisungsgrund, Zuweiser-ID, Ist-Notfall, gewünschtes Eintrittsdatum und zugehörige Abteilung sowie diesen Fall mit der Patient:in verknüpfen.
-- Die vom REST-Service des KIS erhaltene Fall-ID in der Prozessvariable case_id persistieren.
-
-Die Implementierung soll über Delegate Expression mit einem JavaDelegate laufen.
-
-Weitere Hinweise
-=============
-In der Realität wäre hier ganz vieles deutlich umfangreicher und komplexer, z.B. es könnte sich um eine weitere Zuweisung zum gleichen Fall handeln, jemand könnte keine Versichertennummer haben, jemand weist sich selber zu, das Schreiben ins KIS schlägt aus zig Gründen fehl, usw.</bpmn:documentation>
-      <bpmn:incoming>JaSequenceFlow</bpmn:incoming>
-      <bpmn:outgoing>Flow_0x862al</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="TerminrelevanteInformationenAusKISLesenTask" name="Terminrelevante Informationen aus KIS lesen">
-      <bpmn:documentation>Anforderungen
-============
-Für den nachfolgenden Task sollen folgende Informationen aus dem KIS in Prozessvariablen (Bezeichnung in Klammern) extrahiert werden:
-- Patienten-Nachname (pat_lastname)
-- Patienten-Geburtsdatum (pat_birthday)
-- Frühstmögliches Datum für Termin (case_appointment_earliest)
-- Spätmöglichstes Datum für Termin (case_appointment_latest)
-
-
-Weitere Hinweise
-=============
-Diese Anforderung soll nicht in der Prozessapplikation selbst realisiert werden, sondern über einen entsprechend gestalteten Microservice, der als External Task Client auf Aufgaben des Topics GetAppointmentInformation abonniert.</bpmn:documentation>
-      <bpmn:incoming>Flow_10738wk</bpmn:incoming>
-      <bpmn:outgoing>Flow_0ocxv4i</bpmn:outgoing>
-    </bpmn:task>
     <bpmn:userTask id="ZuweisungsantragFormellPrufenUndErganzenTask" name="Zuweisungs-antrag formell prüfen und ergänzen" camunda:asyncAfter="true" camunda:candidateGroups="patadmin">
       <bpmn:documentation>Anforderungen
 ===========
@@ -387,6 +353,40 @@ Zugegebenermassen ist hier die Nutzung von DMN etwas gesucht, aber denkbar. In d
       <bpmn:incoming>Flow_0x862al</bpmn:incoming>
       <bpmn:outgoing>Flow_1vrxdph</bpmn:outgoing>
     </bpmn:businessRuleTask>
+    <bpmn:serviceTask id="PatientinFallInKISErfassenTask" name="Patient:in &#38; Fall in KIS erfassen" camunda:delegateExpression="${CreatePatientAndMedicalCaseAdapter}">
+      <bpmn:documentation>Anforderungen
+===========
+Die bisher erfassten Informationen zu Patient und Fall sollen ins KIS übertragen werden. Konkret sind folgende Schritte erforderlich:
+- Prüfen, ob die Patient:in bereits im KIS erfasst ist anhand Versichertennummer.
+  - Falls nicht vorhanden: neu anlegen mit den Attributen Versichertennummer, Versicherungstyp, Vorname, Nachname, Geburtsdatum und PLZ
+  - Falls vorhanden: Sofern erforderlich, Attribute aktualisieren (z.B. PLZ)
+- Einen neuen Fall anlegen im KIS mit den Attributen  Zuweisungsgrund, Zuweiser-ID, Ist-Notfall, gewünschtes Eintrittsdatum und zugehörige Abteilung sowie diesen Fall mit der Patient:in verknüpfen.
+- Die vom REST-Service des KIS erhaltene Fall-ID in der Prozessvariable case_id persistieren.
+
+Die Implementierung soll über Delegate Expression mit einem JavaDelegate laufen.
+
+Weitere Hinweise
+=============
+In der Realität wäre hier ganz vieles deutlich umfangreicher und komplexer, z.B. es könnte sich um eine weitere Zuweisung zum gleichen Fall handeln, jemand könnte keine Versichertennummer haben, jemand weist sich selber zu, das Schreiben ins KIS schlägt aus zig Gründen fehl, usw.</bpmn:documentation>
+      <bpmn:incoming>JaSequenceFlow</bpmn:incoming>
+      <bpmn:outgoing>Flow_0x862al</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="TerminrelevanteInformationenAusKISLesenTask" name="Terminrelevante Informationen aus KIS lesen" camunda:delegateExpression="${GetAppointmentDateRangeAdapter}">
+      <bpmn:documentation>Anforderungen
+============
+Für den nachfolgenden Task sollen folgende Informationen aus dem KIS in Prozessvariablen (Bezeichnung in Klammern) extrahiert werden:
+- Patienten-Nachname (pat_lastname)
+- Patienten-Geburtsdatum (pat_birthday)
+- Frühstmögliches Datum für Termin (case_appointment_earliest)
+- Spätmöglichstes Datum für Termin (case_appointment_latest)
+
+
+Weitere Hinweise
+=============
+Diese Anforderung soll nicht in der Prozessapplikation selbst realisiert werden, sondern über einen entsprechend gestalteten Microservice, der als External Task Client auf Aufgaben des Topics GetAppointmentInformation abonniert.</bpmn:documentation>
+      <bpmn:incoming>Flow_10738wk</bpmn:incoming>
+      <bpmn:outgoing>Flow_0ocxv4i</bpmn:outgoing>
+    </bpmn:serviceTask>
   </bpmn:process>
   <bpmn:process id="Process_1b3ufno" isExecutable="false">
     <bpmn:laneSet id="LaneSet_1xy3j9e">
@@ -740,12 +740,6 @@ Zugegebenermassen ist hier die Nutzung von DMN etwas gesucht, aber denkbar. In d
           <dc:Bounds x="1861" y="2045" width="58" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_1jl9e5l_di" bpmnElement="PatientinFallInKISErfassenTask">
-        <dc:Bounds x="1030" y="1740" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_0n6rm3i_di" bpmnElement="TerminrelevanteInformationenAusKISLesenTask">
-        <dc:Bounds x="1540" y="1740" width="100" height="80" />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_1ebeq3n_di" bpmnElement="ZuweisungsantragFormellPrufenUndErganzenTask">
         <dc:Bounds x="730" y="1980" width="100" height="80" />
       </bpmndi:BPMNShape>
@@ -757,6 +751,12 @@ Zugegebenermassen ist hier die Nutzung von DMN etwas gesucht, aber denkbar. In d
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_0iffi6m_di" bpmnElement="ZustandigeTriageArztinErmittelnTask1">
         <dc:Bounds x="1180" y="1740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1fcrkdy_di" bpmnElement="PatientinFallInKISErfassenTask">
+        <dc:Bounds x="1030" y="1740" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_02k7106_di" bpmnElement="TerminrelevanteInformationenAusKISLesenTask">
+        <dc:Bounds x="1540" y="1740" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_0sqckpy_di" bpmnElement="Flow_0sqckpy">
         <di:waypoint x="638" y="1510" />
@@ -1297,11 +1297,10 @@ Zugegebenermassen ist hier die Nutzung von DMN etwas gesucht, aber denkbar. In d
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0dzdx6r_di" bpmnElement="VorgesehenerBehandlungszeitraumUndArztinMessageFlow" bioc:stroke="#e53935" color:border-color="#e53935">
-        <di:waypoint x="2000" y="1090" />
-        <di:waypoint x="2000" y="1760" />
-        <di:waypoint x="1640" y="1760" />
+        <di:waypoint x="1590" y="1090" />
+        <di:waypoint x="1590" y="1740" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="2014" y="1394" width="72" height="53" />
+          <dc:Bounds x="1604" y="1384" width="72" height="53" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1hohtbl_di" bpmnElement="TriageAuftragMessageFlow" bioc:stroke="#8e24aa" color:border-color="#8e24aa">
