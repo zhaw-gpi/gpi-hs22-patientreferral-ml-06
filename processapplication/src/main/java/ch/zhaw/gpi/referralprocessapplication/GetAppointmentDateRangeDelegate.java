@@ -1,10 +1,13 @@
-package ch.zhaw.gpi.referralprocessapplication.kis_mock;
+package ch.zhaw.gpi.referralprocessapplication;
 
 import javax.inject.Named;
 
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import ch.zhaw.gpi.referralprocessapplication.kis_mock.MedicalCase;
+import ch.zhaw.gpi.referralprocessapplication.kis_mock.MedicalCaseRepository;
 
 @Named("GetAppointmentDateRangeAdapter")
 public class GetAppointmentDateRangeDelegate implements JavaDelegate {
